@@ -2,7 +2,7 @@ import torch
 import random
 import numpy as np
 from collections import deque
-from game import SnakeGameAI, Direction, Point
+from game import SnakeGameAI, Direction, Point, BLOCK_SIZE
 from model import Linear_QNet, QTrainer
 from helper import plot
 
@@ -18,8 +18,8 @@ class Agent:
         self.epsilon = 0  # randomness
         self.gamma = 0.9  # discount rate
         self.memory = deque(maxlen=MAX_MEMORY)  # popleft when exceed
-        # TODO: model, trainer
-        self.model = Linear_QNet(11, 256, 3)
+        
+        self.model = Linear_QNet(28, 256, 256, 3)
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
 
     def get_state(self, game):
@@ -34,36 +34,41 @@ class Agent:
         dir_u = game.direction == Direction.UP
         dir_d = game.direction == Direction.DOWN
 
+        distances = game.get_distances_in_all8_dir(head.x, head.y)
+        
+        # find the distance to food
+        foodLeftRight = game.food.x - game.head.x
+        foodTopBottom = game.food.y - game.head.y
+        
+        foodLeft, foodRight, foodTop, foodBottom = 0, 0, 0, 0
+        
+        if foodLeftRight < 0:
+            foodLeft = 0
+            foodRight = abs(foodLeftRight)
+        else:
+            foodRight = 0
+            foodLeft = abs(foodLeftRight)
+            
+        if foodTopBottom < 0:
+            foodTop = abs(foodTopBottom)
+            foodBottom = 0
+        else:
+            foodBottom = abs(foodTopBottom)
+            foodTop = 0
+            
+        
+        distances, snakes, apples = game.get_distances_in_all8_dir(head.x, head.y)
+        
         state = [
-            # danger in front
-            (dir_r and game.is_collision(point_r)) or
-            (dir_l and game.is_collision(point_l)) or
-            (dir_u and game.is_collision(point_u)) or
-            (dir_d and game.is_collision(point_d)),
-
-            # danger right
-            (dir_u and game.is_collision(point_r)) or
-            (dir_d and game.is_collision(point_l)) or
-            (dir_l and game.is_collision(point_u)) or
-            (dir_r and game.is_collision(point_d)),
-
-            # Danger left
-            (dir_d and game.is_collision(point_r)) or
-            (dir_u and game.is_collision(point_l)) or
-            (dir_r and game.is_collision(point_u)) or
-            (dir_l and game.is_collision(point_d)),
-
+            *distances,
+            *snakes,
+            *apples,
             dir_l,
-            dir_r,
             dir_u,
-            dir_d,
-            # Food location
-            game.food.x < game.head.x,  # food-left
-            game.food.x > game.head.x,  # food right
-            game.food.y < game.head.y,  # food up
-            game.food.y > game.head.y  # food down
+            dir_r,
+            dir_d            
         ]
-
+                
         return np.array(state, dtype=int)
 
     def remember(self, state, action, reward, next_state, done):
@@ -83,9 +88,9 @@ class Agent:
 
     def get_action(self, state):
         # random moves tradeoff exploration / exploitation
-        self.epsilon = 0 - self.n_games
+        self.epsilon = 400 - self.n_games
         final_move = [0, 0, 0]
-        if random.randint(0, 200) < self.epsilon:
+        if random.randint(0, 600) < self.epsilon:
             move = random.randint(0, 2)
             final_move[move] = 1
         else:

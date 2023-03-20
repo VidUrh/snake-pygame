@@ -31,6 +31,7 @@ RED = (200, 0, 0)
 BLUE1 = (0, 0, 255)
 BLUE2 = (0, 100, 255)
 BLACK = (0, 0, 0)
+GREEN = (0, 255, 0)
 
 BLOCK_SIZE = 20
 SPEED = 10000
@@ -61,6 +62,136 @@ class SnakeGameAI:
         self.food = None
         self._place_food()
         self.frame_iteration = 0
+
+    def get_distances_in_all8_dir(self, headX, headY):
+        snakes = [False for i in range(8)]
+        apples = [False for i in range(8)]
+        # Get the distances in all 8 directions
+        left = 0
+        right = 0
+        top = 0
+        down = 0
+        downleft = 0
+        topright = 0
+        topleft = 0
+        downright = 0
+        
+        # Check the distance to the wall or the snake in the left direction
+        while True:
+            temp= self.is_collision(Point(headX - BLOCK_SIZE * left, headY))
+            if temp:
+                if temp == 2:
+                    snakes[7] = True
+                else:
+                    snakes[7] = False
+                break
+            left += 1
+        
+        # Check the distance to the wall or the snake in the right direction
+        while True:
+            temp= self.is_collision(Point(headX + BLOCK_SIZE * right, headY))
+            if temp:
+                if temp == 2:
+                    snakes[3] = True
+                else:
+                    snakes[3] = False
+                break
+            right += 1
+            
+        # Check the distance to the wall or the snake in the top direction
+        while True:
+            temp = self.is_collision(Point(headX, headY - BLOCK_SIZE * top))
+            if temp:
+                if temp == 2:
+                    snakes[1] = True
+                else:
+                    snakes[1] = False
+                break
+            top += 1
+            
+        # Check the distance to the wall or the snake in the down direction
+        while True:
+            temp = self.is_collision(Point(headX, headY + BLOCK_SIZE * down))
+            if temp:
+                if temp == 2:
+                    snakes[5] = True
+                else:
+                    snakes[5] = False
+                break
+            down += 1
+            
+        # Check the distance to the wall or the snake in the down-left direction
+        while True:
+            temp = self.is_collision(Point(headX - BLOCK_SIZE * downleft, headY + BLOCK_SIZE * downleft))
+            if temp:
+                if temp == 2:
+                    snakes[6] = True
+                else:
+                    snakes[6] = False
+                break
+            downleft += 1
+            
+        # Check the distance to the wall or the snake in the top-right direction
+        while True:
+            temp = self.is_collision(Point(headX + BLOCK_SIZE * topright, headY - BLOCK_SIZE * topright))
+            if temp:
+                if temp == 2:
+                    snakes[2] = True
+                else:
+                    snakes[2] = False
+                break
+            topright += 1
+            
+        # Check the distance to the wall or the snake in the top-left direction
+        while True:
+            temp = self.is_collision(Point(headX - BLOCK_SIZE * topleft, headY - BLOCK_SIZE * topleft))
+            if temp:
+                if temp == 2:
+                    snakes[0] = True
+                else:
+                    snakes[0] = False
+                break
+            topleft += 1
+            
+        # Check the distance to the wall or the snake in the down-right direction
+        while True:
+            temp = self.is_collision(Point(headX + BLOCK_SIZE * downright, headY + BLOCK_SIZE * downright))
+            if temp:
+                if temp == 2:
+                    snakes[4] = True
+                else:
+                    snakes[4] = False
+                break
+            downright += 1
+    
+    
+        # Construct the state vector for the boolean if the square is empty or not
+        
+        distances = [topleft, top, topright, right, downright, down, downleft, left]
+        distances = [x > 1 for x in distances]
+        
+        
+        # Check if the apple is in the topleft direction
+        apples[0] = self.food.x < headX and self.food.y < headY
+        # Check if the apple is in the top direction
+        apples[1] = self.food.x == headX and self.food.y < headY
+        # Check if the apple is in the topright direction
+        apples[2] = self.food.x > headX and self.food.y < headY
+        # Check if the apple is in the right direction
+        apples[3] = self.food.x > headX and self.food.y == headY
+        # Check if the apple is in the downright direction
+        apples[4] = self.food.x > headX and self.food.y > headY
+        # Check if the apple is in the down direction
+        apples[5] = self.food.x == headX and self.food.y > headY
+        # Check if the apple is in the downleft direction
+        apples[6] = self.food.x < headX and self.food.y > headY
+        # Check if the apple is in the left direction
+        apples[7] = self.food.x < headX and self.food.y == headY
+                
+        return distances, snakes, apples
+            
+        
+        
 
     def _place_food(self):
         x = random.randint(0, (self.w-BLOCK_SIZE)//BLOCK_SIZE)*BLOCK_SIZE
@@ -111,7 +242,7 @@ class SnakeGameAI:
             return True
         # hits itself
         if pt in self.snake[1:]:
-            return True
+            return 2
 
         return False
 
@@ -119,8 +250,12 @@ class SnakeGameAI:
         self.display.fill(BLACK)
 
         for pt in self.snake:
-            pygame.draw.rect(self.display, BLUE1, pygame.Rect(pt.x, pt.y, BLOCK_SIZE, BLOCK_SIZE))
-            pygame.draw.rect(self.display, BLUE2, pygame.Rect(pt.x+4, pt.y+4, 12, 12))
+            if pt == self.head:
+                pygame.draw.rect(self.display, BLUE1, pygame.Rect(pt.x, pt.y, BLOCK_SIZE, BLOCK_SIZE))
+                pygame.draw.rect(self.display, GREEN, pygame.Rect(pt.x+4, pt.y+4, BLOCK_SIZE-8, BLOCK_SIZE-8))
+            else:
+                pygame.draw.rect(self.display, BLUE1, pygame.Rect(pt.x, pt.y, BLOCK_SIZE, BLOCK_SIZE))
+                pygame.draw.rect(self.display, BLUE2, pygame.Rect(pt.x+4, pt.y+4, BLOCK_SIZE-8, BLOCK_SIZE-8))
 
         pygame.draw.rect(self.display, RED, pygame.Rect(self.food.x, self.food.y, BLOCK_SIZE, BLOCK_SIZE))
 
